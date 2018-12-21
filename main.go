@@ -3,8 +3,55 @@ package concurrentio
 import (
 	"context"
 	"io"
-	"runtime"
 )
+
+type SimpleWriter struct {
+	w []io.Writer
+}
+
+func SimpleWriterNew(w ...io.Writer) *SimpleWriter {
+	wr := make([]io.Writer, len(w), len(w))
+	for i := range w {
+		wr[i] = w[i]
+	}
+
+	return &SimpleWriter{w: wr}
+}
+
+func (w *SimpleWriter) Write(p []byte) (int, error) {
+	errors := make(chan error, len(w.w))
+	for _, writer := range w.w {
+		go func(w io.Writer) {
+			write := func() error {
+				n, err := w.Write(p)
+				if err != nil {
+					return err
+				}
+				if n != len(p) {
+					return io.ErrShortWrite
+				}
+				return nil
+			}
+			errors <- write()
+		}(writer)
+	}
+
+	drain := func() error {
+		err := error(nil)
+		for i := 0; i < cap(errors); i++ {
+			if e := <-errors; e != nil {
+				err = e
+			}
+		}
+		return err
+	}
+
+	if err := drain(); err != nil {
+		return 0, err
+	}
+
+	return len(p), nil
+}
 
 type Writer struct {
 	c int // level of concurrency
@@ -16,7 +63,7 @@ func (w *Writer) Write(p []byte) (int, error) {
 
 	concurrency := func() int {
 		if w.c < 0 {
-			return 4
+			return len(p)
 		}
 		return w.c
 	}()
@@ -88,5 +135,5 @@ func MultiWriterWithConcurrency(n int, w ...io.Writer) *Writer {
 func MultiWriter(w ...io.Writer) *Writer {
 	writers := make([]io.Writer, len(w), len(w))
 	copy(writers, w)
-	return &Writer{c: runtime.NumCPU(), w: writers}
+	return &Writer{c: -1, w: writers}
 }

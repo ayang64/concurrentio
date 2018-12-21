@@ -39,7 +39,7 @@ func BenchmarkWriters(b *testing.B) {
 	randompaths := func(n int) []string {
 		rc := make([]string, n, n)
 		for i := 0; i < n; i++ {
-			rc[i] = fmt.Sprintf("test-data/test-file-%03d.dat", i)
+			rc[i] = fmt.Sprintf("test-data/test-file-%05d.dat", i)
 		}
 		return rc
 	}
@@ -74,12 +74,13 @@ func BenchmarkWriters(b *testing.B) {
 		F    func(...io.Writer) io.Writer
 	}{
 		{Name: "Stdlib Multi-Writer", F: func(w ...io.Writer) io.Writer { rc := io.MultiWriter(w...); return io.Writer(rc) }},
-		{Name: "Concurrent Multi-Writer", F: func(w ...io.Writer) io.Writer { rc := MultiWriter(w...); return io.Writer(rc) }},
+		{Name: "Simple Multi-Writer", F: func(w ...io.Writer) io.Writer { rc := SimpleWriterNew(w...); return io.Writer(rc) }},
+		{Name: "Concurrent Multi-Writer", F: func(w ...io.Writer) io.Writer { rc := MultiWriterWithConcurrency(128, w...); return io.Writer(rc) }},
 	}
 
-	for exp := uint(1); exp < 5; exp++ {
+	for exp := uint(1); exp < 13; exp++ {
+		numfiles := 1 << exp
 		for _, bench := range benches {
-			numfiles := 1 << exp
 			paths := randompaths(numfiles)
 			handles, err := open(paths...)
 
