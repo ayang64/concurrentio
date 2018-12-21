@@ -79,6 +79,11 @@ mainloop:
 
 	return len(p), nil
 }
+func MultiWriterWithConcurrency(n int, w ...io.Writer) *Writer {
+	rc := MultiWriter(w...)
+	rc.c = n
+	return rc
+}
 
 func MultiWriter(w ...io.Writer) *Writer {
 	writers := make([]io.Writer, len(w), len(w))

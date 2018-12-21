@@ -6,11 +6,26 @@ import (
 	"io"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestMultiWriter(t *testing.T) {
 	w := MultiWriter(os.Stdout, os.Stderr)
 	t.Logf("%#v", w)
+}
+
+type SlowWriter struct {
+	latency time.Duration
+	w       io.Writer
+}
+
+func (s *SlowWriter) Write(p []byte) (int, error) {
+	time.Sleep(s.latency)
+	return s.w.Write(p)
+}
+
+func NewSlowWriter(latency time.Duration, w io.Writer) *SlowWriter {
+	return &SlowWriter{latency: latency, w: w}
 }
 
 func BenchmarkWriters(b *testing.B) {
@@ -46,7 +61,7 @@ func BenchmarkWriters(b *testing.B) {
 	towriter := func(fh []*os.File) []io.Writer {
 		rc := make([]io.Writer, len(fh), len(fh))
 		for i := range fh {
-			rc[i] = fh[i]
+			rc[i] = NewSlowWriter(250*time.Millisecond, fh[i])
 		}
 
 		return rc
@@ -62,41 +77,46 @@ func BenchmarkWriters(b *testing.B) {
 		{Name: "Concurrent Multi-Writer", F: func(w ...io.Writer) io.Writer { rc := MultiWriter(w...); return io.Writer(rc) }},
 	}
 
-	for _, bench := range benches {
+	for exp := uint(1); exp < 5; exp++ {
+		for _, bench := range benches {
+			numfiles := 1 << exp
+			paths := randompaths(numfiles)
+			handles, err := open(paths...)
 
-		paths := randompaths(100)
-		handles, err := open(paths...)
-
-		if err != nil {
-			b.Fatal(err)
-			b.FailNow()
-		}
-
-		writers := towriter(handles)
-
-		writer := bench.F(writers...)
-
-		b.Run(bench.Name, func(b *testing.B) {
-			for i := 0; i < b.N; i++ {
-				writer.Write(data)
-			}
-		})
-
-		for i := range handles {
-			handles[i].Close()
-		}
-
-		for i := range paths {
-			if err := os.Remove(paths[i]); err != nil {
+			if err != nil {
 				b.Fatal(err)
 				b.FailNow()
+			}
+
+			writers := towriter(handles)
+
+			writer := bench.F(writers...)
+
+			countlabel := fmt.Sprintf("Files-%05d", numfiles)
+
+			b.Run(countlabel, func(b *testing.B) {
+				b.Run(bench.Name, func(b *testing.B) {
+					for i := 0; i < b.N; i++ {
+						writer.Write(data)
+					}
+				})
+			})
+
+			for i := range handles {
+				handles[i].Close()
+			}
+
+			for i := range paths {
+				if err := os.Remove(paths[i]); err != nil {
+					b.Fatal(err)
+					b.FailNow()
+				}
 			}
 		}
 	}
 }
 
 func TestMultiWriterWriting(t *testing.T) {
-
 	o1, err := os.Create("o1.dat")
 
 	if err != nil {
