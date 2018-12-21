@@ -11,10 +11,7 @@ type SimpleWriter struct {
 
 func SimpleWriterNew(w ...io.Writer) *SimpleWriter {
 	wr := make([]io.Writer, len(w), len(w))
-	for i := range w {
-		wr[i] = w[i]
-	}
-
+	copy(wr, w)
 	return &SimpleWriter{w: wr}
 }
 
