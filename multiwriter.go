@@ -3,7 +3,6 @@ package concurrentio
 import (
 	"context"
 	"io"
-	"log"
 )
 
 type multiWriter struct {
