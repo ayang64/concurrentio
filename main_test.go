@@ -75,19 +75,9 @@ func BenchmarkWriters(b *testing.B) {
 		Name string
 		F    func(...io.Writer) io.Writer
 	}{
-		{
-			Name: "Stdlib Multi-Writer",
-			F:    func(w ...io.Writer) io.Writer { rc := io.MultiWriter(w...); return io.Writer(rc) },
-		}, {
-			Name: "Simple Multi-Writer",
-			F:    func(w ...io.Writer) io.Writer { rc := concurrentio.SimpleMultiWriterNew(w...); return io.Writer(rc) },
-		}, {
-			Name: "Concurrent Multi-Writer",
-			F: func(w ...io.Writer) io.Writer {
-				rc := concurrentio.MultiWriterWithConcurrency(-1, w...)
-				return io.Writer(rc)
-			},
-		},
+		{Name: "Stdlib Multi-Writer", F: io.MultiWriter},
+		{Name: "Simple Multi-Writer", F: concurrentio.SimpleMultiWriterNew},
+		{Name: "Concurrent Multi-Writer", F: concurrentio.MultiWriter},
 	}
 
 	for exp := uint(1); exp < 13; exp++ {
@@ -102,7 +92,6 @@ func BenchmarkWriters(b *testing.B) {
 			}
 
 			writers := towriter(handles)
-
 			writer := bench.F(writers...)
 
 			countlabel := fmt.Sprintf("Files-%05d", numfiles)

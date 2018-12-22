@@ -5,12 +5,12 @@ import (
 	"io"
 )
 
-type Writer struct {
+type multiWriter struct {
 	c int // level of concurrency
 	w []io.Writer
 }
 
-func (w *Writer) Write(p []byte) (int, error) {
+func (w *multiWriter) Write(p []byte) (int, error) {
 	errchan := make(chan error)
 
 	concurrency := func() int {
@@ -78,14 +78,20 @@ mainloop:
 
 	return len(p), nil
 }
-func MultiWriterWithConcurrency(n int, w ...io.Writer) *Writer {
-	rc := MultiWriter(w...)
+
+func newMultiWriter(w ...io.Writer) *multiWriter {
+	writers := make([]io.Writer, len(w), len(w))
+	copy(writers, w)
+	return &multiWriter{c: -1, w: writers}
+}
+
+func MultiWriterWithConcurrency(n int, w ...io.Writer) io.Writer {
+	rc := newMultiWriter(w...)
 	rc.c = n
 	return rc
 }
 
-func MultiWriter(w ...io.Writer) *Writer {
-	writers := make([]io.Writer, len(w), len(w))
-	copy(writers, w)
-	return &Writer{c: -1, w: writers}
+func MultiWriter(w ...io.Writer) io.Writer {
+	rc := newMultiWriter(w...)
+	return rc
 }

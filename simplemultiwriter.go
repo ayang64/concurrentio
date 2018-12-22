@@ -6,7 +6,7 @@ type SimpleMultiWriter struct {
 	w []io.Writer
 }
 
-func SimpleMultiWriterNew(w ...io.Writer) *SimpleMultiWriter {
+func SimpleMultiWriterNew(w ...io.Writer) io.Writer {
 	wr := make([]io.Writer, len(w), len(w))
 	copy(wr, w)
 	return &SimpleMultiWriter{w: wr}
