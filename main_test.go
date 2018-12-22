@@ -1,4 +1,4 @@
-package concurrentio
+package concurrentio_test
 
 import (
 	"crypto/rand"
@@ -7,10 +7,12 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	"github.com/ayang64/concurrentio"
 )
 
 func TestMultiWriter(t *testing.T) {
-	w := MultiWriter(os.Stdout, os.Stderr)
+	w := concurrentio.MultiWriter(os.Stdout, os.Stderr)
 	t.Logf("%#v", w)
 }
 
@@ -73,9 +75,19 @@ func BenchmarkWriters(b *testing.B) {
 		Name string
 		F    func(...io.Writer) io.Writer
 	}{
-		{Name: "Stdlib Multi-Writer", F: func(w ...io.Writer) io.Writer { rc := io.MultiWriter(w...); return io.Writer(rc) }},
-		{Name: "Simple Multi-Writer", F: func(w ...io.Writer) io.Writer { rc := SimpleWriterNew(w...); return io.Writer(rc) }},
-		{Name: "Concurrent Multi-Writer", F: func(w ...io.Writer) io.Writer { rc := MultiWriterWithConcurrency(128, w...); return io.Writer(rc) }},
+		{
+			Name: "Stdlib Multi-Writer",
+			F:    func(w ...io.Writer) io.Writer { rc := io.MultiWriter(w...); return io.Writer(rc) },
+		}, {
+			Name: "Simple Multi-Writer",
+			F:    func(w ...io.Writer) io.Writer { rc := concurrentio.SimpleMultiWriterNew(w...); return io.Writer(rc) },
+		}, {
+			Name: "Concurrent Multi-Writer",
+			F: func(w ...io.Writer) io.Writer {
+				rc := concurrentio.MultiWriterWithConcurrency(-1, w...)
+				return io.Writer(rc)
+			},
+		},
 	}
 
 	for exp := uint(1); exp < 13; exp++ {
@@ -134,7 +146,7 @@ func TestMultiWriterWriting(t *testing.T) {
 
 	defer o2.Close()
 
-	w := MultiWriter(o1, o2)
+	w := concurrentio.MultiWriter(o1, o2)
 
 	fmt.Fprintf(w, "HELLO WORLD!\n")
 }
