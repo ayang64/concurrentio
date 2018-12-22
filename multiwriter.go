@@ -3,6 +3,7 @@ package concurrentio
 import (
 	"context"
 	"io"
+	"log"
 )
 
 type multiWriter struct {
@@ -15,7 +16,7 @@ func (w *multiWriter) Write(p []byte) (int, error) {
 
 	concurrency := func() int {
 		if w.c < 0 {
-			return len(p)
+			return len(w.w)
 		}
 		return w.c
 	}()
