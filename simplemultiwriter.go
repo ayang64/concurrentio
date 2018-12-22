@@ -2,17 +2,21 @@ package concurrentio
 
 import "io"
 
-type SimpleMultiWriter struct {
+type simpleMultiWriter struct {
 	w []io.Writer
 }
 
-func SimpleMultiWriterNew(w ...io.Writer) io.Writer {
+func simpleMultiWriterNew(w ...io.Writer) *simpleMultiWriter {
 	wr := make([]io.Writer, len(w), len(w))
 	copy(wr, w)
-	return &SimpleMultiWriter{w: wr}
+	return &simpleMultiWriter{w: wr}
 }
 
-func (w *SimpleMultiWriter) Write(p []byte) (int, error) {
+func SimpleMultiWriterNew(w ...io.Writer) io.Writer {
+	return simpleMultiWriterNew(w...)
+}
+
+func (w *simpleMultiWriter) Write(p []byte) (int, error) {
 	errors := make(chan error, len(w.w))
 	for _, writer := range w.w {
 		go func(w io.Writer) {

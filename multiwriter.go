@@ -92,6 +92,5 @@ func MultiWriterWithConcurrency(n int, w ...io.Writer) io.Writer {
 }
 
 func MultiWriter(w ...io.Writer) io.Writer {
-	rc := newMultiWriter(w...)
-	return rc
+	return newMultiWriter(w...)
 }
